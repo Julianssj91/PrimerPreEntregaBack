@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 class ProductManager {
   constructor() {
     this.products = [];
@@ -19,7 +21,7 @@ class ProductManager {
     };
 
     this.products.push(newProduct);
-    return newProduct.id; 
+    return newProduct.id;
   }
 
   getProductById(id) {
@@ -32,34 +34,6 @@ class ProductManager {
     return product;
   }
 
-  updateProduct(id, updatedFields) {
-    const productIndex = this.products.findIndex((p) => p.id === id);
-
-    if (productIndex === -1) {
-      throw new Error('No se encontró ningún producto con el ID proporcionado.');
-    }
-
-    
-    this.products[productIndex] = {
-      ...this.products[productIndex],
-      ...updatedFields,
-      id: id,
-    };
-
-    return this.products[productIndex];
-  }
-
-  deleteProduct(id) {
-    const productIndex = this.products.findIndex((p) => p.id === id);
-
-    if (productIndex === -1) {
-      throw new Error('No se encontró ningún producto con el ID proporcionado.');
-    }
-
-    const deletedProduct = this.products.splice(productIndex, 1)[0];
-    return deletedProduct;
-  }
-
   isCodeRepeated(code) {
     return this.products.some((product) => product.code === code);
   }
@@ -68,12 +42,27 @@ class ProductManager {
     this.lastId++;
     return this.lastId;
   }
-}
 
+  saveToFile(filename) {
+    const data = JSON.stringify(this.products, null, 2);
+    fs.writeFileSync(filename, data);
+  }
+
+  loadFromFile(filename) {
+    const data = fs.readFileSync(filename, 'utf8');
+    this.products = JSON.parse(data);
+    this.updateLastId();
+  }
+
+  updateLastId() {
+    const lastProduct = this.products[this.products.length - 1];
+    this.lastId = lastProduct ? lastProduct.id : 0;
+  }
+}
 
 const productManager = new ProductManager();
 
-console.log(productManager.getProducts());
+productManager.loadFromFile('productos.json');
 
 const product = {
   title: 'producto prueba',
@@ -91,28 +80,15 @@ try {
   console.error('Error al agregar el producto:', error.message);
 }
 
+productManager.saveToFile('productos.json');
+
 console.log(productManager.getProducts());
 
+const productId = productManager.getProducts()[0].id;
+
 try {
-  const productId = productManager.getProducts()[0].id; 
   const foundProduct = productManager.getProductById(productId);
   console.log('Producto encontrado:', foundProduct);
 } catch (error) {
   console.error('Error al obtener el producto por ID:', error.message);
-}
-
-try {
-  const productId = productManager.getProducts()[0].id; 
-  const updatedProduct = productManager.updateProduct(productId, { price: 250 });
-  console.log('Producto actualizado:', updatedProduct);
-} catch (error) {
-  console.error('Error al actualizar el producto:', error.message);
-}
-
-try {
-  const productId = productManager.getProducts()[0].id; 
-  const deletedProduct = productManager.deleteProduct(productId);
-  console.log('Producto eliminado:', deletedProduct);
-} catch (error) {
-  console.error('Error al eliminar el producto:', error.message);
 }
