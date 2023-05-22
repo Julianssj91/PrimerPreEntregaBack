@@ -67,10 +67,8 @@ class ProductManager {
   }
 }
 
-// Crear instancia de ProductManager y especificar el archivo
 const productManager = new ProductManager('productos.json');
 
-// Agregar un nuevo producto
 const product = {
   title: 'producto prueba',
   description: 'Este es un producto prueba',
@@ -87,10 +85,8 @@ try {
   console.error('Error al agregar el producto:', error.message);
 }
 
-// Obtener productos después de agregar uno nuevo
 console.log(productManager.getProducts());
 
-// Obtener un producto por su ID
 const productId = productManager.getProducts()[0].id;
 
 try {
