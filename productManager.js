@@ -61,6 +61,10 @@ class ProductManager {
     const lastProduct = this.products[this.products.length - 1];
     this.lastId = lastProduct ? lastProduct.id : 0;
   }
+
+  getProducts() {
+    return this.products;
+  }
 }
 
 // Crear instancia de ProductManager y especificar el archivo
