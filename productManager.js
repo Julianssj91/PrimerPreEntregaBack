@@ -1,13 +1,11 @@
 const fs = require('fs');
 
 class ProductManager {
-  constructor() {
+  constructor(path) {
+    this.path = path;
     this.products = [];
     this.lastId = 0;
-  }
-
-  getProducts() {
-    return this.products;
+    this.loadFromFile();
   }
 
   addProduct(product) {
@@ -21,6 +19,7 @@ class ProductManager {
     };
 
     this.products.push(newProduct);
+    this.saveToFile();
     return newProduct.id;
   }
 
@@ -43,15 +42,19 @@ class ProductManager {
     return this.lastId;
   }
 
-  saveToFile(filename) {
+  saveToFile() {
     const data = JSON.stringify(this.products, null, 2);
-    fs.writeFileSync(filename, data);
+    fs.writeFileSync(this.path, data);
   }
 
-  loadFromFile(filename) {
-    const data = fs.readFileSync(filename, 'utf8');
-    this.products = JSON.parse(data);
-    this.updateLastId();
+  loadFromFile() {
+    try {
+      const data = fs.readFileSync(this.path, 'utf8');
+      this.products = JSON.parse(data);
+      this.updateLastId();
+    } catch (error) {
+      console.log('No se pudo cargar el archivo:', error.message);
+    }
   }
 
   updateLastId() {
@@ -60,10 +63,10 @@ class ProductManager {
   }
 }
 
-const productManager = new ProductManager();
+// Crear instancia de ProductManager y especificar el archivo
+const productManager = new ProductManager('productos.json');
 
-productManager.loadFromFile('productos.json');
-
+// Agregar un nuevo producto
 const product = {
   title: 'producto prueba',
   description: 'Este es un producto prueba',
@@ -80,10 +83,10 @@ try {
   console.error('Error al agregar el producto:', error.message);
 }
 
-productManager.saveToFile('productos.json');
-
+// Obtener productos después de agregar uno nuevo
 console.log(productManager.getProducts());
 
+// Obtener un producto por su ID
 const productId = productManager.getProducts()[0].id;
 
 try {
