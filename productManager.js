@@ -1,11 +1,14 @@
+const express = require('express');
 const fs = require('fs');
 
 class ProductManager {
   constructor(path) {
     this.path = path;
     this.products = [];
-    this.lastId = 0;
-    this.loadFromFile();
+  }
+
+  getProducts() {
+    return this.loadFromFile();
   }
 
   addProduct(product) {
@@ -18,13 +21,14 @@ class ProductManager {
       id: this.generateId(),
     };
 
-    this.products.push(newProduct);
-    this.saveToFile();
-    return newProduct.id;
+    const products = this.loadFromFile();
+    products.push(newProduct);
+    this.saveToFile(products);
+    console.log('Producto agregado con éxito. ID:', newProduct.id);
   }
 
   getProductById(id) {
-    const product = this.products.find((p) => p.id === id);
+    const product = this.loadFromFile().find((p) => p.id === id);
 
     if (!product) {
       throw new Error('No se encontró ningún producto con el ID proporcionado.');
@@ -34,40 +38,33 @@ class ProductManager {
   }
 
   isCodeRepeated(code) {
-    return this.products.some((product) => product.code === code);
+    return this.loadFromFile().some((product) => product.code === code);
   }
 
   generateId() {
-    this.lastId++;
-    return this.lastId;
-  }
+    const ids = this.loadFromFile().map((product) => product.id);
+    let newId;
 
-  saveToFile() {
-    const data = JSON.stringify(this.products, null, 2);
-    fs.writeFileSync(this.path, data);
+    do {
+      newId = Math.floor(Math.random() * 1000) + 1;
+    } while (ids.includes(newId));
+
+    return newId;
   }
 
   loadFromFile() {
-    try {
-      const data = fs.readFileSync(this.path, 'utf8');
-      this.products = JSON.parse(data);
-      this.updateLastId();
-    } catch (error) {
-      console.log('No se pudo cargar el archivo:', error.message);
-    }
+    const data = fs.readFileSync(this.path, 'utf8');
+    return JSON.parse(data);
   }
 
-  updateLastId() {
-    const lastProduct = this.products[this.products.length - 1];
-    this.lastId = lastProduct ? lastProduct.id : 0;
-  }
-
-  getProducts() {
-    return this.products;
+  saveToFile(data) {
+    fs.writeFileSync(this.path, JSON.stringify(data, null, 2));
   }
 }
 
 const productManager = new ProductManager('productos.json');
+
+console.log(productManager.getProducts());
 
 const product = {
   title: 'producto prueba',
@@ -79,15 +76,20 @@ const product = {
 };
 
 try {
-  const productId = productManager.addProduct(product);
-  console.log('Producto agregado con éxito. ID:', productId);
+  productManager.addProduct(product);
 } catch (error) {
   console.error('Error al agregar el producto:', error.message);
 }
 
 console.log(productManager.getProducts());
 
-const productId = productManager.getProducts()[0].id;
+try {
+  productManager.addProduct(product);
+} catch (error) {
+  console.error('Error al agregar el producto:', error.message);
+}
+
+const productId = productManager.getProducts()[0].id; 
 
 try {
   const foundProduct = productManager.getProductById(productId);
