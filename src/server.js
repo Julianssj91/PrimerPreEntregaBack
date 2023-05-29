@@ -1,52 +1,44 @@
 const express = require('express');
-const fs = require('fs');
+const ProductManager = require('./productManager');
+
+
+
 const app = express();
+const port = 8080;
 
-class ProductManager {
-    constructor(path) {
-        this.path = path;
-    }
+const productManager = new ProductManager('DATA/productos.json');
 
-    getProducts() {
-        return this.loadFromFile();
-    }
 
-    loadFromFile() {
-        const data = fs.readFileSync(this.path, 'utf8');
-        return JSON.parse(data);
-    }
-}
+app.get('/products', async (req, res) => {
+    try {
+        const products = await productManager.getProducts();
 
-app.get('/products', (req, res) => {
-    const productManager = new ProductManager('productos.json');
-    const products = productManager.getProducts();
-    res.json(products);
-});
-
-app.get('/products', (req, res) => {
-    const limit = parseInt(req.query.limit) || 0;
-    const productManager = new ProductManager('productos.json');
-    const products = productManager.getProducts().slice(0, limit);
-    res.json(products);
-});
-
-app.get('/products/:id', (req, res) => {
-    const productId = parseInt(req.params.id);
-    const productManager = new ProductManager('productos.json');
-    const products = productManager.getProducts();
-    const product = products.find((p) => p.id === productId);
-
-    if (product) {
-        res.json(product);
-    } else {
-        res.status(404).json({ error: 'Producto no encontrado' });
+        if (req.query.limit) {
+            const limit = parseInt(req.query.limit);
+            return res.status(200).json(products.slice(0, limit));
+        } else {
+            return res.status(200).json(products);
+        }
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-app.use((req, res) => {
-    res.status(404).json({ error: 'Página no encontrada' });
+app.get('/products/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const product = await productManager.getProductById(id);
+
+        if (product) {
+            return res.status(200).json(product);
+        } else {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
-app.listen(8080, () => {
-    console.log('Servidor iniciado en http://localhost:8080');
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
