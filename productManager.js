@@ -1,13 +1,13 @@
 const fs = require('fs').promises;
 
 class ProductManager {
-  constructor(path) {
-    this.path = path;
+  constructor(filePath) {
+    this.filePath = filePath;
   }
 
   async getProducts() {
     try {
-      const data = await fs.readFile(this.path, 'utf8');
+      const data = await fs.readFile(this.filePath, 'utf8');
       return JSON.parse(data);
     } catch (error) {
       console.error('Error reading file:', error);
@@ -17,7 +17,7 @@ class ProductManager {
 
   async getProductById(id) {
     try {
-      const data = await fs.readFile(this.path, 'utf8');
+      const data = await fs.readFile(this.filePath, 'utf8');
       const products = JSON.parse(data);
       return products.find((product) => product.id === id);
     } catch (error) {
