@@ -1,6 +1,10 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
+const productosData = fs.readFileSync('src/data/productos.json', 'utf-8');
+const productos = JSON.parse(productosData);
 
 const app = express();
 const PORT = 8080;
@@ -11,204 +15,152 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         cb(null, file.originalname);
-    }
+    },
 });
 
 const upload = multer({ storage });
 
 app.use(express.json());
 
+let products = productos;
+let carts = [];
+
 const productsRouter = express.Router();
 
 productsRouter.get('/', (req, res) => {
-    fs.readFile('productos.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer los productos' });
-        } else {
-            const products = JSON.parse(data);
-            res.json(products);
-        }
-    });
+    res.json(products);
 });
 
 productsRouter.get('/:pid', (req, res) => {
     const { pid } = req.params;
-    fs.readFile('productos.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer los productos' });
-        } else {
-            const products = JSON.parse(data);
-            const product = products.find((p) => p.id === pid);
-            if (product) {
-                res.json(product);
-            } else {
-                res.status(404).json({ error: 'Producto no encontrado' });
-            }
-        }
-    });
+    const product = products.find((p) => p.id === parseInt(pid));
+
+    if (product) {
+        res.json(product);
+    } else {
+        res.status(404).json({ error: 'Producto no encontrado' });
+    }
 });
 
 productsRouter.post('/', (req, res) => {
-    const product = req.body;
-    fs.readFile('productos.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer los productos' });
-        } else {
-            const products = JSON.parse(data);
-            product.id = generateProductId(products);
-            products.push(product);
-            fs.writeFile('productos.json', JSON.stringify(products, null, 2), (err) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).json({ error: 'Error al agregar el producto' });
-                } else {
-                    res.status(201).json(product);
-                }
-            });
-        }
-    });
+    const { name, price, code } = req.body;
+
+    if (!name || !price || !code) {
+        res.status(400).json({ error: 'Faltan campos obligatorios' });
+        return;
+    }
+
+    const newProduct = {
+        id: uuidv4(),
+        name,
+        price,
+        code,
+    };
+
+    products.push(newProduct);
+    res.status(201).json(newProduct);
 });
 
 productsRouter.put('/:pid', (req, res) => {
     const { pid } = req.params;
-    const updatedProduct = req.body;
-    fs.readFile('productos.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer los productos' });
-        } else {
-            const products = JSON.parse(data);
-            const index = products.findIndex((p) => p.id === pid);
-            if (index !== -1) {
-                updatedProduct.id = pid;
-                products[index] = updatedProduct;
-                fs.writeFile('productos.json', JSON.stringify(products, null, 2), (err) => {
-                    if (err) {
-                        console.error(err);
-                        res.status(500).json({ error: 'Error al actualizar el producto' });
-                    } else {
-                        res.json(updatedProduct);
-                    }
-                });
-            } else {
-                res.status(404).json({ error: 'Producto no encontrado' });
-            }
-        }
-    });
+    const { name, price, code } = req.body;
+
+    const product = products.find((p) => p.id === parseInt(pid));
+
+    if (product) {
+        product.name = name || product.name;
+        product.price = price || product.price;
+        product.code = code || product.code;
+
+        res.json(product);
+    } else {
+        res.status(404).json({ error: 'Producto no encontrado' });
+    }
 });
 
 productsRouter.delete('/:pid', (req, res) => {
     const { pid } = req.params;
-    fs.readFile('productos.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer los productos' });
-        } else {
-            const products = JSON.parse(data);
-            const index = products.findIndex((p) => p.id === pid);
-            if (index !== -1) {
-                const deletedProduct = products.splice(index, 1)[0];
-                fs.writeFile('productos.json', JSON.stringify(products, null, 2), (err) => {
-                    if (err) {
-                        console.error(err);
-                        res.status(500).json({ error: 'Error al eliminar el producto' });
-                    } else {
-                        res.json(deletedProduct);
-                    }
-                });
-            } else {
-                res.status(404).json({ error: 'Producto no encontrado' });
-            }
-        }
-    });
+
+    const productIndex = products.findIndex((p) => p.id === parseInt(pid));
+
+    if (productIndex !== -1) {
+        products.splice(productIndex, 1);
+        res.sendStatus(204);
+    } else {
+        res.status(404).json({ error: 'Producto no encontrado' });
+    }
 });
 
 const cartsRouter = express.Router();
 
-cartsRouter.post('/', (req, res) => {
-    const cart = {
-        id: generateCartId(),
-        products: []
-    };
-    fs.writeFile('carrito.json', JSON.stringify(cart, null, 2), (err) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al crear el carrito' });
-        } else {
-            res.status(201).json(cart);
-        }
-    });
+cartsRouter.get('/', (req, res) => {
+    res.json(carts);
 });
 
 cartsRouter.get('/:cid', (req, res) => {
     const { cid } = req.params;
-    fs.readFile('carrito.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer el carrito' });
-        } else {
-            const cart = JSON.parse(data);
-            if (cart.id === cid) {
-                res.json(cart.products);
-            } else {
-                res.status(404).json({ error: 'Carrito no encontrado' });
-            }
-        }
-    });
-});
+    const cart = carts.find((c) => c.id === cid);
 
-cartsRouter.post('/:cid/product/:pid', (req, res) => {
-    const { cid, pid } = req.params;
-    const { quantity } = req.body;
-    fs.readFile('carrito.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error al leer el carrito' });
-        } else {
-            const cart = JSON.parse(data);
-            if (cart.id === cid) {
-                const product = { id: pid, quantity };
-                cart.products.push(product);
-                fs.writeFile('carrito.json', JSON.stringify(cart, null, 2), (err) => {
-                    if (err) {
-                        console.error(err);
-                        res.status(500).json({ error: 'Error al agregar el producto al carrito' });
-                    } else {
-                        res.json(cart.products);
-                    }
-                });
-            } else {
-                res.status(404).json({ error: 'Carrito no encontrado' });
-            }
-        }
-    });
-});
-
-app.use('/api/products', productsRouter);
-app.use('/api/carts', cartsRouter);
-
-app.post('/api/upload', upload.single('image'), (req, res) => {
-    if (req.file) {
-        res.send('Archivo cargado correctamente');
+    if (cart) {
+        res.json(cart);
     } else {
-        res.status(400).json({ error: 'No se ha proporcionado un archivo' });
+        res.status(404).json({ error: 'Carrito no encontrado' });
     }
 });
 
-function generateProductId(products) {
-    let id = Math.floor(Math.random() * 1000);
-    while (products.some((p) => p.id === id)) {
-        id = Math.floor(Math.random() * 1000);
-    }
-    return id;
-}
+cartsRouter.post('/', (req, res) => {
+    const newCart = {
+        id: uuidv4(),
+        products: [],
+    };
 
-function generateCartId() {
-    return Math.random().toString(36).substr(2, 9);
-}
+    carts.push(newCart);
+    res.status(201).json(newCart);
+});
+
+cartsRouter.post('/:cid/products/:pid', (req, res) => {
+    const { cid, pid } = req.params;
+    const cart = carts.find((c) => c.id === cid);
+    const product = products.find((p) => p.id === parseInt(pid));
+
+    if (!cart) {
+        res.status(404).json({ error: 'Carrito no encontrado' });
+        return;
+    }
+
+    if (!product) {
+        res.status(404).json({ error: 'Producto no encontrado' });
+        return;
+    }
+
+    const existingProduct = cart.products.find((p) => p.product === pid);
+
+    if (existingProduct) {
+        existingProduct.quantity++;
+    } else {
+        cart.products.push({ product: pid, quantity: 1 });
+    }
+
+    res.json(cart.products);
+});
+
+app.use('/products', productsRouter);
+app.use('/carts', cartsRouter);
+
+app.post('/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        res.status(400).json({ error: 'No se ha seleccionado ningún archivo' });
+        return;
+    }
+
+    const filePath = path.join(__dirname, 'uploads', req.file.filename);
+    res.status(200).json({ message: 'Archivo subido correctamente', filePath });
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Error interno del servidor' });
+});
 
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto ${PORT}`);
