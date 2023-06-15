@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Home</title>
+</head>
+<body>
+  <h1>Lista de productos</h1>
+  <ul>
+    {{#each products}}
+    <li>{{this}}</li>
+    {{/each}}
+  </ul>
+
+  <form id="createProductForm" action="/create" method="post">
+    <label for="productName">Nombre del producto:</label>
+    <input type="text" id="productName" name="productName" required>
+    <button type="submit">Crear Producto</button>
+  </form>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Escuchar evento para actualizar la lista de productos en tiempo real
+    socket.on('productCreated', (product) => {
+      const productList = document.querySelector('ul');
+      const productItem = document.createElement('li');
+      productItem.textContent = product;
+      productList.appendChild(productItem);
+    });
+
+    // Escuchar evento para eliminar un producto de la lista en tiempo real
+    socket.on('productDeleted', (productId) => {
+      const productList = document.querySelector('ul');
+      const productItem = Array.from(productList.children).find((li) => li.textContent === productId);
+      if (productItem) {
+        productList.removeChild(productItem);
+      }
+    });
+
+    // Enviar formulario para crear un nuevo producto
+    const createProductForm = document.getElementById('createProductForm');
+    createProductForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const productName = document.getElementById('productName').value;
+
+      // Emitir el evento para crear un producto
+      socket.emit('newProduct', productName);
+    });
+  </script>
+</body>
+</html>

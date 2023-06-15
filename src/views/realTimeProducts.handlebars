@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Productos en tiempo real</title>
+</head>
+<body>
+  <h1>Lista de productos en tiempo real</h1>
+  <ul>
+    {{#each products}}
+    <li>{{this}}</li>
+    {{/each}}
+  </ul>
+
+  <form id="deleteProductForm">
+    <label for="productId">ID del producto a eliminar:</label>
+    <input type="text" id="productId" name="productId" required>
+    <button type="submit">Eliminar Producto</button>
+  </form>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Escuchar evento para actualizar la lista de productos en tiempo real
+    socket.on('productCreated', (product) => {
+      const productList = document.querySelector('ul');
+      const productItem = document.createElement('li');
+      productItem.textContent = product;
+      productList.appendChild(productItem);
+    });
+
+    // Escuchar evento para eliminar un producto de la lista en tiempo real
+    socket.on('productDeleted', (productId) => {
+      const productList = document.querySelector('ul');
+      const productItem = Array.from(productList.children).find((li) => li.textContent === productId);
+      if (productItem) {
+        productList.removeChild(productItem);
+      }
+    });
+
+    // Enviar formulario para eliminar un producto
+    const deleteProductForm = document.getElementById('deleteProductForm');
+    deleteProductForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const productId = document.getElementById('productId').value;
+
+      // Emitir el evento para eliminar un producto
+      socket.emit('deleteProduct', productId);
+    });
+  </script>
+</body>
+</html>
